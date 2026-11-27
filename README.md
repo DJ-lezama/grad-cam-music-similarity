@@ -13,11 +13,12 @@ that match what matters in a music-copyright dispute?
 **Grad-CAM** to see which time-frequency regions drive its decisions.
 
 **Finding:** the model learns **version identity** (recognising re-arrangements of the *same* segment), not melodic
-similarity. It does well in-domain (ROC-AUC 0.83) but is at chance on real copyright cases (ROC-AUC 0.44), and Grad-CAM
-shows attention on low-level, rendition-specific texture rather than melodic contour.
+similarity. It does reasonably in-domain (ROC-AUC 0.83 on validation, 0.76 on held-out test tracks) but is at chance on
+real copyright cases (ROC-AUC 0.45), scoring *every* court case as similar, and Grad-CAM shows attention on low-level,
+rendition-specific texture rather than melodic contour.
 
 **Quick links:** [poster (PDF)](docs/poster/poster.pdf) · [walkthrough notebook](notebooks/walkthrough.ipynb) ·
-[results](#results-original-run) · [reproduce](#reproducing) · [changes from the original notebook](#changes-from-the-original-colab-notebook)
+[results](#results-original-run) · [test-split re-evaluation](#re-evaluation-with-the-released-checkpoint) · [reproduce](#reproducing) · [changes from the original notebook](#changes-from-the-original-colab-notebook)
 
 <sub>Course project, Artificial Vision (LIS4042), Universidad de las Américas Puebla, Fall 2025. The audio/music side of
 the project was designed and carried out independently.</sub>
@@ -77,7 +78,36 @@ rendering (every MCIC song is synthesised from MIDI with the same soundfont) rat
 
 <img src="docs/figures/fig3_mcic_roc.png" width="330"> <img src="docs/figures/fig3_mcic_confusion.png" width="330">
 
-### Grad-CAM
+## Re-evaluation with the released checkpoint
+
+The same `siamese_best.pt` was re-run with this repository's code: on MelodySim's **held-out test split**, which the
+original run never touched (validation was also used for early stopping), with fixed seeded pairs; and on MCIC with
+corrected file matching and both scoring modes.
+
+| | original run | this repo |
+|---|---|---|
+| MelodySim split | validation (2,099 pairs, re-sampled each pass) | **test** (9,751 fixed pairs, 100 unseen tracks) |
+| MelodySim ROC-AUC | 0.833 | **0.758** |
+| MelodySim accuracy @ 0.5 | 0.732 | 0.684 (precision 0.72, recall 0.60 for *similar*) |
+| MCIC cases scored | 95 | 96 |
+| MCIC ROC-AUC, center window | 0.442 | **0.450** |
+| MCIC ROC-AUC, best-matching windows | – | **0.397** |
+
+* **Generalisation within MelodySim is weaker than the validation number suggested** (0.76 vs 0.83 on unseen tracks),
+  but clearly above chance.
+* **The ablation pattern holds on test:** all three channels 0.758 · log-mel + harmonic 0.671 · log-mel + percussive
+  0.651 · harmonic 0.588 · log-mel 0.578 · harmonic + percussive 0.566 · percussive 0.549.
+* **On MCIC every one of the 96 pairs scores between 0.61 and 0.87**, whatever the court decided: the model treats any
+  two MIDI renderings as "versions" of each other. Comparing the best-matching windows (`max-window`) makes this worse,
+  not better (ROC-AUC 0.397), which supports the conclusion that the signal is rendering texture, not melody.
+* Cases 31 and 57 are still skipped: they have no rendered audio and need the FluidR3_GM soundfont used in the original
+  run (`--soundfont`).
+
+<img src="docs/figures/test_melodysim_roc.png" width="300"> <img src="docs/figures/test_ablation.png" width="470">
+
+<img src="docs/figures/test_mcic_score_distribution.png" width="780">
+
+## Grad-CAM
 
 | MelodySim, similar pair | MCIC, false positive |
 |---|---|
@@ -89,7 +119,12 @@ rendering (every MCIC song is synthesised from MIDI with the same soundfont) rat
 * **False negatives / positives:** misses ignore melodic contours; false alarms highlight incidental timbre overlap.
 * **MCIC:** occasionally highlights musically relevant note clusters, but inconsistently.
 
-### Interpretation
+The same picture on a held-out **test** pair with the released checkpoint (`scripts/gradcam_examples.py`): two versions
+of one segment, scored 0.85 similar, with heat concentrated on different, unaligned regions in each branch.
+
+<img src="docs/figures/test_gradcam_similar.png" width="820">
+
+## Interpretation
 
 Musical similarity forms a hierarchy: *identical audio* → *different versions of the same song* → *melodically similar
 songs* → *vaguely similar (style, harmony)* → *unrelated*. The training pairs only test level 2 (versionness), while legal

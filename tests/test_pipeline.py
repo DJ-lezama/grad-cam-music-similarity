@@ -99,3 +99,9 @@ def test_melodysim_metadata():
     assert parse_relative_path("test/Track01962/version_2/1.wav") == ("test", "Track01962", "version_2", "1")
     assert len(read_shard_list()) == 103
     assert len(read_shard_list(split="test")) == 35
+
+
+def test_mcic_name_matching():
+    from musicsim.mcic import _stem
+    assert _stem("003_a_L'Annee_Passee.mid") == _stem("003_a_L_Annee_Passee.wav")
+    assert _stem("031_b_Theme_from_‘E.T.’.mid") == _stem("031_b_Theme_from_ET.mid")

@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+import unicodedata
 from pathlib import Path
 
 import librosa
@@ -38,7 +39,13 @@ def normalize_filename(name: str) -> str:
 
 
 def _stem(name: str) -> str:
-    return Path(normalize_filename(name)).stem.lower()
+    """Matching key: lower-case letters and digits only, accents removed.
+
+    Handles CSV/disk differences such as "L'Annee" vs "L_Annee" or "‘E.T.’" vs "ET".
+    """
+    stem = Path(str(name).strip()).stem
+    stem = unicodedata.normalize("NFKD", stem).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]", "", stem.lower())
 
 
 def load_pairs(csv_path: Path = C.MCIC_CSV) -> pd.DataFrame:
