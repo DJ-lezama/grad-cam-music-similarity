@@ -27,6 +27,11 @@ dependencies = [
 
 [project.optional-dependencies]
 notebook = ["jupyter", "ipykernel"]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::FutureWarning", "ignore::UserWarning"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

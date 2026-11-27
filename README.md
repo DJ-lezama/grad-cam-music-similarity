@@ -1,6 +1,10 @@
 # From Versionness to Infringement?
 ### A Grad-CAM study of audio-based musical similarity models
 
+[![tests](https://github.com/DJ-lezama/grad-cam-music-similarity/actions/workflows/tests.yml/badge.svg)](https://github.com/DJ-lezama/grad-cam-music-similarity/actions/workflows/tests.yml)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DJ-lezama/grad-cam-music-similarity/blob/main/notebooks/walkthrough.ipynb)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **Question:** when a deep audio-similarity model says two songs are "similar", *what is it actually looking at*, and does
 that match what matters in a music-copyright dispute?
 
@@ -107,12 +111,12 @@ pip install -r requirements.txt
 gh release download --repo DJ-lezama/grad-cam-music-similarity -p siamese_best.pt -D checkpoints
 ```
 
-**2. MelodySim** (public, CC-BY 3.0). The full set used here is ~50 GB; `--quick N` takes only the first N shards
-(~0.5 GB each) for a fast end-to-end check.
+**2. MelodySim** (public, CC-BY 3.0). The full set used here is ~50 GB. `--split test` fetches only the 35 shards
+holding the test split (~17 GB), and `--quick N` only the first N shards (~0.5 GB each) for a fast end-to-end check.
 
 ```bash
-python scripts/download_melodysim.py --quick 3
-python scripts/preprocess_melodysim.py
+python scripts/download_melodysim.py --split test
+python scripts/preprocess_melodysim.py --delete-parquets   # ~5 GB of spectrograms; parquets removed as processed
 ```
 
 **3. MCIC** (optional). Place the dataset in `data/mcic/` as `MCIC-ISMIR2024.csv` plus either rendered WAVs in
@@ -129,8 +133,13 @@ python scripts/benchmark_mcic.py --mode max-window             # MCIC, best-matc
 python scripts/train.py                                        # retrain from scratch (GPU recommended)
 ```
 
-Or open [`notebooks/walkthrough.ipynb`](notebooks/walkthrough.ipynb), which shows the saved results and re-runs each step
-when data and weights are present. Set `MUSICSIM_DATA=/path/to/data` to keep the large files elsewhere.
+Or open [`notebooks/walkthrough.ipynb`](notebooks/walkthrough.ipynb) (locally or
+[in Colab](https://colab.research.google.com/github/DJ-lezama/grad-cam-music-similarity/blob/main/notebooks/walkthrough.ipynb)),
+which shows the saved results and re-runs each step when data and weights are present.
+Set `MUSICSIM_DATA=/path/to/data` to keep the large files elsewhere (e.g. on Google Drive in Colab).
+
+**Tests:** `pip install -e ".[dev]" && pytest` runs fast checks (no data needed) of preprocessing, pairing, the model,
+Grad-CAM and MCIC scoring; they also run on every push via GitHub Actions.
 
 ## Repository layout
 
@@ -148,6 +157,7 @@ src/musicsim/
   plots.py            figures
 scripts/              command-line entry points
 notebooks/            walkthrough
+tests/                fast pytest checks (no data needed)
 data/                 shard list + reference manifest of the original run (large data is git-ignored)
 docs/figures/         result figures from the original run
 docs/poster/          poster (corrected PDF + PNG), original PDF, correction script
@@ -195,4 +205,5 @@ so it does not add information beyond "the ranking is close to chance".
    similarity.* IEEE TIP 13(4), 2004.
 5. R. R. Selvaraju et al. *Grad-CAM: Visual explanations from deep networks via gradient-based localization.* ICCV, 2017.
 
-Datasets are not redistributed here; see their own licences. MelodySim is CC-BY 3.0.
+Code is MIT-licensed ([LICENSE](LICENSE)). Datasets are not redistributed here; see their own licences. MelodySim is
+CC-BY 3.0.

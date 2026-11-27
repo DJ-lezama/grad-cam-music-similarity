@@ -27,8 +27,14 @@ MANIFEST_COLUMNS = ["split", "track_id", "version", "chunk_id", "relative_path",
 
 
 # ---------------------------------------------------------------- download --
-def read_shard_list(path: Path = C.SHARD_LIST) -> list[str]:
-    return [ln.strip() for ln in Path(path).read_text().splitlines() if ln.strip()]
+def read_shard_list(path: Path = C.SHARD_LIST, split: str | None = None) -> list[str]:
+    """Shards of the original run; with `split`, only those holding that split's segments."""
+    shards = [ln.strip() for ln in Path(path).read_text().splitlines() if ln.strip()]
+    if split is None:
+        return shards
+    ref = pd.read_csv(C.REFERENCE_MANIFEST, usecols=["split", "parquet_file"])
+    wanted = set(ref.loc[ref["split"] == split, "parquet_file"])
+    return [s for s in shards if s in wanted]
 
 
 def download_shards(shards: list[str], out_dir: Path = C.PARQUET_DIR) -> list[Path]:
@@ -75,32 +81,52 @@ def multispec_filename(split, track_id, version, chunk_id) -> str:
     return f"{split}_{track_id}_{version}_{chunk_id}_mspec.npy"
 
 
-def preprocess_shards(parquet_paths: list[Path], out_dir: Path = C.MULTISPEC_DIR,
-                      manifest_path: Path = C.MANIFEST, dtype: str = "float16") -> pd.DataFrame:
-    """Turn every segment into a (3, 128, T) multispec .npy and write a manifest.
+def process_shard(path: Path, out_dir: Path = C.MULTISPEC_DIR, dtype: str = "float16") -> list[dict]:
+    """Turn every segment of one shard into a (3, 128, T) multispec .npy; return manifest rows.
 
     Already-processed files are skipped, so the step can be resumed.
     `dtype=float16` halves disk use (~0.5 MB per segment); values are in [0, 1].
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     rows = []
-    for path in parquet_paths:
-        for audio, sr, relpath, idx in tqdm(iter_parquet_rows(path), desc=Path(path).name, leave=False):
-            split, track, version, chunk = parse_relative_path(relpath)
-            if split is None:
-                continue
-            fname = multispec_filename(split, track, version, chunk)
-            out = out_dir / fname
-            if not out.exists():
-                # The original run stored the log-mel as float16 before HPSS; keep that step.
-                logmel = audio_to_logmel(audio, sr).astype(np.float16).astype(np.float32)
-                np.save(out, build_multichannel(logmel).astype(dtype))
-            rows.append(dict(split=split, track_id=track, version=version, chunk_id=chunk,
-                             relative_path=relpath, parquet_file=Path(path).name,
-                             row_index=idx, multispec_file=fname))
-    df = pd.DataFrame(rows, columns=MANIFEST_COLUMNS)
+    for audio, sr, relpath, idx in tqdm(iter_parquet_rows(path), desc=Path(path).name, leave=False):
+        split, track, version, chunk = parse_relative_path(relpath)
+        if split is None:
+            continue
+        fname = multispec_filename(split, track, version, chunk)
+        out = out_dir / fname
+        if not out.exists():
+            # The original run stored the log-mel as float16 before HPSS; keep that step.
+            logmel = audio_to_logmel(audio, sr).astype(np.float16).astype(np.float32)
+            tmp = out.with_suffix(".tmp.npy")      # write-then-rename: an interrupted run never
+            np.save(tmp, build_multichannel(logmel).astype(dtype))   # leaves a truncated .npy behind
+            tmp.replace(out)
+        rows.append(dict(split=split, track_id=track, version=version, chunk_id=chunk,
+                         relative_path=relpath, parquet_file=Path(path).name,
+                         row_index=idx, multispec_file=fname))
+    return rows
+
+
+def update_manifest(rows: list[dict], manifest_path: Path = C.MANIFEST) -> pd.DataFrame:
+    """Merge rows into the manifest on disk (deduplicated), so shards can be added over time."""
+    new = pd.DataFrame(rows, columns=MANIFEST_COLUMNS)
+    if manifest_path.exists():
+        new = pd.concat([pd.read_csv(manifest_path, dtype={"chunk_id": str}), new])
+    df = new.drop_duplicates("multispec_file", keep="last").reset_index(drop=True)
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(manifest_path, index=False)
+    return df
+
+
+def preprocess_shards(parquet_paths: list[Path], out_dir: Path = C.MULTISPEC_DIR,
+                      manifest_path: Path = C.MANIFEST, dtype: str = "float16",
+                      delete_parquets: bool = False) -> pd.DataFrame:
+    """Process shards one by one, updating the manifest after each (optionally deleting the parquet)."""
+    df = pd.DataFrame(columns=MANIFEST_COLUMNS)
+    for path in tqdm(parquet_paths, desc="shards"):
+        df = update_manifest(process_shard(Path(path), out_dir, dtype), manifest_path)
+        if delete_parquets:
+            Path(path).unlink()
     return df
 
 
