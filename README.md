@@ -20,8 +20,13 @@ rendition-specific texture rather than melodic contour.
 **Quick links:** [poster (PDF)](docs/poster/poster.pdf) · [walkthrough notebook](notebooks/walkthrough.ipynb) ·
 [results](#results-original-run) · [test-split re-evaluation](#re-evaluation-with-the-released-checkpoint) · [reproduce](#reproducing) · [changes from the original notebook](#changes-from-the-original-colab-notebook)
 
-<sub>Course project, Artificial Vision (LIS4042), Universidad de las Américas Puebla, Fall 2025. The audio/music side of
-the project was designed and carried out independently.</sub>
+## Project history
+
+* **Fall 2025:** course project for *Artificial Vision* (LIS4042) at Universidad de las Américas Puebla, presented as the
+  poster below. The audio/music side of the project was designed and carried out independently.
+* **2026:** extended independently: restructured into a tested Python package, evaluation issues fixed
+  ([details](#changes-from-the-original-colab-notebook)), the released checkpoint re-evaluated on MelodySim's held-out
+  test split and on MCIC with a new scoring mode, and Colab / CI support added.
 
 ## Poster
 
