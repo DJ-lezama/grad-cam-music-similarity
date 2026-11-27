@@ -12,10 +12,20 @@ that match what matters in a music-copyright dispute?
 similarity. It does well in-domain (ROC-AUC 0.83) but is at chance on real copyright cases (ROC-AUC 0.44), and Grad-CAM
 shows attention on low-level, rendition-specific texture rather than melodic contour.
 
-![poster](docs/poster.png)
+**Quick links:** [poster (PDF)](docs/poster/poster.pdf) · [walkthrough notebook](notebooks/walkthrough.ipynb) ·
+[results](#results-original-run) · [reproduce](#reproducing) · [changes from the original notebook](#changes-from-the-original-colab-notebook)
 
 <sub>Course project, Artificial Vision (LIS4042), Universidad de las Américas Puebla, Fall 2025. The audio/music side of
 the project was designed and carried out independently.</sub>
+
+## Poster
+
+[![poster](docs/poster/poster.png)](docs/poster/poster.pdf)
+
+<sub>Click for the PDF. This version corrects typos and two statements in the presented poster
+([original](docs/poster/poster_original.pdf)): the validation result is now reported as ROC-AUC 0.83 / 73 % accuracy
+(the original said ">80 % accuracy"), the training-set size is 8,928 segments, and the "flipped score" bullet explains
+that inverting the score only mirrors ROC-AUC. The edits are scripted in [`fix_poster.py`](docs/poster/fix_poster.py).</sub>
 
 ---
 
@@ -33,7 +43,7 @@ two multispecs ─► shared CNN encoder ─► |z_a − z_b| ─► MLP ─► 
 | Step | Details |
 |---|---|
 | Visual baseline | Spectrograms as images: CLAHE, directional median filters, Canny, Hough lines, SSIM, multi-dimensional DTW |
-| Data | 103 MelodySim shards → 28,826 segments, 351 tracks; splits taken from each segment's path |
+| Data | 103 MelodySim shards → 28,826 segments, 351 tracks; splits taken from each segment's path. The run trained on 8,928 training segments and validated on 2,099 pairs |
 | Pairs | positive = same segment in two different versions; negative = segments from different tracks |
 | Model | 4 conv blocks (16→128 ch), GAP, 256-d L2-normalised embedding, MLP on \|z_a − z_b\| (≈164 k params) |
 | Training | BCE, Adam lr 1e-4, ReduceLROnPlateau, early stopping (stopped at epoch 18, best val loss at epoch 10) |
@@ -139,7 +149,8 @@ src/musicsim/
 scripts/              command-line entry points
 notebooks/            walkthrough
 data/                 shard list + reference manifest of the original run (large data is git-ignored)
-docs/                 poster and figures
+docs/figures/         result figures from the original run
+docs/poster/          poster (corrected PDF + PNG), original PDF, correction script
 ```
 
 ## Changes from the original Colab notebook
