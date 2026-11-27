@@ -1,0 +1,16 @@
+torch>=2.1
+numpy
+pandas
+scipy
+scikit-learn
+librosa>=0.10
+soundfile
+matplotlib
+pyarrow
+huggingface_hub
+tqdm
+opencv-python-headless
+scikit-image
+dtaidistance
+jupyter
+-e .

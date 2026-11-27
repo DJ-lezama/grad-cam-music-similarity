@@ -1,0 +1,19 @@
+# environments
+.venv/
+__pycache__/
+*.egg-info/
+.ipynb_checkpoints/
+.DS_Store
+
+# large data (download / generate locally; see README)
+data/melodysim_parquets/
+data/multispec/
+data/manifest_multispec.csv
+data/mcic/
+
+# model weights are published as a GitHub release asset
+checkpoints/*.pt
+checkpoints/*.json
+
+# generated results
+outputs/
